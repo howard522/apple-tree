@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/game_page.dart';
+import 'screens/home_page.dart';
 
 void main() {
   runApp(const AppleTreeGameApp());
@@ -14,7 +14,7 @@ class AppleTreeGameApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Apple Tree 🍎',
       theme: ThemeData(colorSchemeSeed: Colors.green, useMaterial3: true),
-      home: const GamePage(),
+      home: const HomePage(),
     );
   }
 }

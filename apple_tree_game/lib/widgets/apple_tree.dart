@@ -9,18 +9,15 @@ class AppleTree extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       alignment: Alignment.center,
-      children: [
-        Image.asset('assets/tree.png'),                     // tree base
-        ..._buildApples(context),
-      ],
+      children: _buildApples(),
     );
   }
 
-  List<Widget> _buildApples(BuildContext context) {
-    final rnd = Random(apples); // deterministic per frame
+  List<Widget> _buildApples() {
+    final rnd = Random(apples);
     final List<Widget> list = [];
     for (int i = 0; i < apples; i++) {
-      final dx = rnd.nextDouble() * 140 - 70;  // spread
+      final dx = rnd.nextDouble() * 140 - 70;
       final dy = rnd.nextDouble() * 120 - 60;
       list.add(Positioned(
         top: 120 + dy,
