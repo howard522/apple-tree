@@ -11,22 +11,31 @@ class GamePage extends StatefulWidget {
   State<GamePage> createState() => _GamePageState();
 }
 
-class _GamePageState extends State<GamePage> {
+class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
   late int _applesRemaining;
   bool _isPlayerTurn = true;
   String _statusMsg = '遊戲開始！輪到你了';
   int _countdown = 0;
   Timer? _timer;
 
+  // 角色晃動動畫控制器
+  late final AnimationController _playerCtrl;
+  late final AnimationController _robotCtrl;
+
   @override
   void initState() {
     super.initState();
+    _playerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))
+      ..stop();
+    _robotCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))
+      ..stop();
     _resetGame();
   }
 
+  // --------------------------- Game Flow ---------------------------
   void _resetGame() {
     _timer?.cancel();
-    _applesRemaining = Random().nextInt(9) + 26;
+    _applesRemaining = Random().nextInt(9) + 26; // 26–34
     _isPlayerTurn = true;
     _statusMsg = '遊戲開始！輪到你了';
     _countdown = 0;
@@ -40,6 +49,8 @@ class _GamePageState extends State<GamePage> {
 
   void _applyMove(int picked, {required bool isPlayer}) {
     setState(() => _applesRemaining -= picked);
+
+    _triggerShake(isPlayer); // 角色晃動
 
     if (_applesRemaining <= 0) {
       final loser = isPlayer ? '玩家' : '電腦';
@@ -82,6 +93,17 @@ class _GamePageState extends State<GamePage> {
     return target.clamp(1, 3);
   }
 
+  // ---------------------- Animation helpers ------------------------
+  void _triggerShake(bool isPlayer) {
+    final ctrl = isPlayer ? _playerCtrl : _robotCtrl;
+    ctrl
+      ..reset()
+      ..repeat(reverse: true);
+    // 自動停止晃動
+    Future.delayed(const Duration(milliseconds: 600), ctrl.stop);
+  }
+
+  // ----------------------------- UI --------------------------------
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -89,43 +111,84 @@ class _GamePageState extends State<GamePage> {
       appBar: AppBar(title: const Text('蘋果樹 🍏 vs 🤖')),
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/tree.png',
-              fit: BoxFit.cover,
-            ),
-          ),
+          Positioned.fill(child: Image.asset('assets/tree.png', fit: BoxFit.cover)),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Center(
-                      child: AppleTree(
-                        apples: _applesRemaining,
-                        key: ValueKey(_applesRemaining),
+            child: Column(
+              children: [
+                // ─── 上方：角色 + 蘋果樹 ─────────────────────
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final imgHeight = constraints.maxHeight * 0.6;
+                      return Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 玩家
+                          Positioned(
+                            left: 16,
+                            bottom: 0,
+                            child: AnimatedBuilder(
+                              animation: _playerCtrl,
+                              builder: (context, child) => Transform.translate(
+                                offset: Offset(0, -8 * _playerCtrl.value),
+                                child: child,
+                              ),
+                              child: GestureDetector(
+                                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('剩餘蘋果：$_applesRemaining')),
+                                ),
+                                child: Image.asset('assets/player.png', height: imgHeight),
+                              ),
+                            ),
+                          ),
+                          // 機器人
+                          Positioned(
+                            right: 16,
+                            bottom: 0,
+                            child: AnimatedBuilder(
+                              animation: _robotCtrl,
+                              builder: (context, child) => Transform.translate(
+                                offset: Offset(0, -8 * _robotCtrl.value),
+                                child: child,
+                              ),
+                              child: Image.asset('assets/robot.png', height: imgHeight),
+                            ),
+                          ),
+                          // 蘋果樹 & 蘋果
+                          Center(child: AppleTree(apples: _applesRemaining, key: ValueKey(_applesRemaining))),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                // ─── 底部控制區域 ────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    children: [
+                      Text('剩餘蘋果：$_applesRemaining', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 12),
+                      PickerControls(enabled: _isPlayerTurn && _applesRemaining > 0, onPick: _onPlayerPick),
+                      const SizedBox(height: 12),
+                      if (_countdown > 0)
+                        Text('電腦將在 $_countdown 秒後搖蘋果…', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      Text(_statusMsg, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: _resetGame,
+                        icon: const Icon(Icons.replay),
+                        label: const Text('重新開始'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                          shape: const StadiumBorder(),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
-                  Text('剩餘蘋果：$_applesRemaining', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  PickerControls(
-                    enabled: _isPlayerTurn && _applesRemaining > 0,
-                    onPick: _onPlayerPick,
-                  ),
-                  const SizedBox(height: 12),
-                  if (_countdown > 0) Text('電腦將在 $_countdown 秒後搖蘋果…'),
-                  const SizedBox(height: 8),
-                  Text(_statusMsg, style: theme.textTheme.bodyLarge),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _resetGame,
-                    icon: const Icon(Icons.replay),
-                    label: const Text('重新開始'),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -136,6 +199,8 @@ class _GamePageState extends State<GamePage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _playerCtrl.dispose();
+    _robotCtrl.dispose();
     super.dispose();
   }
 }

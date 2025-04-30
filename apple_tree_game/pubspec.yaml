@@ -63,6 +63,8 @@ flutter:
   assets:
     - assets/tree.png        # A transparent PNG of a tree trunk/canopy
     - assets/apple.png 
+    - assets/player.png 
+    - assets/robot.png 
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

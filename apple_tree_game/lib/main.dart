@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'screens/home_page.dart';
 
-void main() {
-  runApp(const AppleTreeGameApp());
-}
+void main() => runApp(const AppleTreeGameApp());
 
 class AppleTreeGameApp extends StatelessWidget {
   const AppleTreeGameApp({super.key});
@@ -13,7 +12,11 @@ class AppleTreeGameApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Apple Tree 🍎',
-      theme: ThemeData(colorSchemeSeed: Colors.green, useMaterial3: true),
+      theme: ThemeData(
+        colorSchemeSeed: Colors.green,
+        useMaterial3: true,
+        textTheme: GoogleFonts.nunitoTextTheme(),
+      ),
       home: const HomePage(),
     );
   }
