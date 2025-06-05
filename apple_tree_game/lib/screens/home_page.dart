@@ -15,7 +15,7 @@ class HomePage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/tree.png', height: 180),
+              Image.asset('assets/images/tree.png', height: 180),
               const SizedBox(height: 32),
               Text('🎮 玩法說明', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),

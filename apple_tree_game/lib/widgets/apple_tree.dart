@@ -22,7 +22,7 @@ class AppleTree extends StatelessWidget {
       list.add(Positioned(
         top: 120 + dy,
         left: 160 + dx,
-        child: Image.asset('assets/apple.png', width: 24, height: 24),
+        child: Image.asset('assets/images/apple.png', width: 24, height: 24),
       ));
     }
     return list;

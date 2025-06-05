@@ -1,3 +1,4 @@
+// lib/screens/game_page.dart
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -18,27 +19,33 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
   int _countdown = 0;
   Timer? _timer;
 
-  // 角色晃動動畫控制器
+  // 角色動畫控制器
   late final AnimationController _playerCtrl;
   late final AnimationController _robotCtrl;
+
+  // Day1 要新增的兩個狀態：玩家／電腦是否正在搖晃 (affect which image to show)
+  bool _playerRolling = false;
+  bool _robotRolling = false;
 
   @override
   void initState() {
     super.initState();
-    _playerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))
-      ..stop();
-    _robotCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))
-      ..stop();
+    // 初始化動畫控制器
+    _playerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))..stop();
+    _robotCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))..stop();
     _resetGame();
   }
 
-  // --------------------------- Game Flow ---------------------------
+  // ────────────────────────── Game Flow ──────────────────────────
   void _resetGame() {
     _timer?.cancel();
     _applesRemaining = Random().nextInt(9) + 26; // 26–34
     _isPlayerTurn = true;
     _statusMsg = '遊戲開始！輪到你了';
     _countdown = 0;
+    // Day1：確保「搖晃圖」回到靜態
+    _playerRolling = false;
+    _robotRolling = false;
     setState(() {});
   }
 
@@ -50,7 +57,8 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
   void _applyMove(int picked, {required bool isPlayer}) {
     setState(() => _applesRemaining -= picked);
 
-    _triggerShake(isPlayer); // 角色晃動
+    // Day1：觸發搖晃動畫與圖片切換
+    _triggerShake(isPlayer);
 
     if (_applesRemaining <= 0) {
       final loser = isPlayer ? '玩家' : '電腦';
@@ -61,7 +69,6 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
     }
 
     _isPlayerTurn = !isPlayer;
-
     if (_isPlayerTurn) {
       _statusMsg = '輪到你了！';
       _countdown = 0;
@@ -93,17 +100,38 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
     return target.clamp(1, 3);
   }
 
-  // ---------------------- Animation helpers ------------------------
+  // Day1：改造 _triggerShake，加入顯示搖晃圖片的邏輯
   void _triggerShake(bool isPlayer) {
     final ctrl = isPlayer ? _playerCtrl : _robotCtrl;
+
+    // Step1：先把對應的 "rolling" flag 開啟，觸發 setState 讓 build 中切換到搖晃圖
+    setState(() {
+      if (isPlayer) {
+        _playerRolling = true;
+      } else {
+        _robotRolling = true;
+      }
+    });
+
+    // Step2：動畫重置並重播
     ctrl
       ..reset()
       ..repeat(reverse: true);
-    // 自動停止晃動
-    Future.delayed(const Duration(milliseconds: 600), ctrl.stop);
+
+    // Step3：600ms 後停止動畫，並把 "rolling" flag 關掉
+    Future.delayed(const Duration(milliseconds: 600), () {
+      ctrl.stop();
+      setState(() {
+        if (isPlayer) {
+          _playerRolling = false;
+        } else {
+          _robotRolling = false;
+        }
+      });
+    });
   }
 
-  // ----------------------------- UI --------------------------------
+  // ───────────────────────────── UI ─────────────────────────────
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -111,7 +139,8 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
       appBar: AppBar(title: const Text('蘋果樹 🍏 vs 🤖')),
       body: Stack(
         children: [
-          Positioned.fill(child: Image.asset('assets/tree.png', fit: BoxFit.cover)),
+          // 背景樹 (繼續使用原本的背景)
+          Positioned.fill(child: Image.asset('assets/images/tree.png', fit: BoxFit.cover)),
           SafeArea(
             child: Column(
               children: [
@@ -123,7 +152,7 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
                       return Stack(
                         alignment: Alignment.center,
                         children: [
-                          // 玩家
+                          // 玩家 (左邊)
                           Positioned(
                             left: 16,
                             bottom: 0,
@@ -137,11 +166,18 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
                                 onTap: () => ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('剩餘蘋果：$_applesRemaining')),
                                 ),
-                                child: Image.asset('assets/player.png', height: imgHeight),
+                                child: Image.asset(
+                                  // Day1：正在搖晃就顯示 player_rolltree.png，否則顯示 player.png
+                                  _playerRolling
+                                      ? 'assets/images/player_rolltree.png'
+                                      : 'assets/images/player.png',
+                                  height: imgHeight,
+                                ),
                               ),
                             ),
                           ),
-                          // 機器人
+
+                          // 電腦 (右邊)
                           Positioned(
                             right: 16,
                             bottom: 0,
@@ -151,29 +187,54 @@ class _GamePageState extends State<GamePage> with TickerProviderStateMixin {
                                 offset: Offset(0, -8 * _robotCtrl.value),
                                 child: child,
                               ),
-                              child: Image.asset('assets/robot.png', height: imgHeight),
+                              child: Image.asset(
+                                // Day1：正在搖晃就顯示 computer_rolltree.png，否則顯示 robot.png
+                                _robotRolling
+                                    ? 'assets/images/computer_rolltree.png'
+                                    : 'assets/images/robot.png',
+                                height: imgHeight,
+                              ),
                             ),
                           ),
-                          // 蘋果樹 & 蘋果
-                          Center(child: AppleTree(apples: _applesRemaining, key: ValueKey(_applesRemaining))),
+
+                          // 中間蘋果樹 & 蘋果
+                          Center(
+                            child: AppleTree(
+                              apples: _applesRemaining,
+                              key: ValueKey(_applesRemaining),
+                            ),
+                          ),
                         ],
                       );
                     },
                   ),
                 ),
-                // ─── 底部控制區域 ────────────────────────────────
+
+                // ─── 底部：剩餘蘋果數、按鈕、狀態訊息、重置 ─────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Column(
                     children: [
-                      Text('剩餘蘋果：$_applesRemaining', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(
+                        '剩餘蘋果：$_applesRemaining',
+                        style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+                      ),
                       const SizedBox(height: 12),
-                      PickerControls(enabled: _isPlayerTurn && _applesRemaining > 0, onPick: _onPlayerPick),
+                      PickerControls(
+                        enabled: _isPlayerTurn && _applesRemaining > 0,
+                        onPick: _onPlayerPick,
+                      ),
                       const SizedBox(height: 12),
                       if (_countdown > 0)
-                        Text('電腦將在 $_countdown 秒後搖蘋果…', style: theme.textTheme.titleMedium),
+                        Text(
+                          '電腦將在 $_countdown 秒後搖蘋果…',
+                          style: theme.textTheme.titleMedium,
+                        ),
                       const SizedBox(height: 8),
-                      Text(_statusMsg, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      Text(
+                        _statusMsg,
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                      ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
                         onPressed: _resetGame,
